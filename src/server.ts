@@ -1,28 +1,28 @@
-import app from "./app.js";
-import { Server } from "node:http";
+import app from './app.js'
+import type { Server } from "node:http";
+import { env } from './config/env.js';
+import { pool } from './db/index.js';
+
+await pool.query("SELECT 1");
 
 
-let server: Server;
-let port: number = process.env.PORT
-
-async function startServer() {
-    server= app.listen(port, () => {
-        console.log(`Server is running on http://localhost:${port}`);
-    });
-
-    server.on("error", (error) => {
-        console.error(`Error starting server: ${error}`);
-        process.exit(1);
-    });
-}
-
-async function stopServer() {
-    if (server) {
-        await new Promise(resolve => server.close(resolve));
-    }
-}
-
-startServer().catch((error) => {
-    console.error(`Error starting server: ${error}`);
-    process.exit(1);
+const server: Server = app.listen(env.PORT, (error) => {
+    if (error) throw error;
+    console.log(`Server running on http://localhost:${env.PORT}`);
 });
+
+let isShuttingDown = false;
+
+async function shutdown() {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    setTimeout(() => process.exit(1), 8000);{}
+
+    await new Promise(resolve => server.close(resolve));
+    await pool.end();
+    process.exit(0);
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
